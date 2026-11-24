@@ -1,0 +1,60 @@
+name: Build Installers (fork)
+
+on:
+  push:
+    branches: [feat/custom-lyrics]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24.x"
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            cmd: pnpm dist:mac:arm64 && pnpm dist:mac
+          - name: Windows
+            os: windows-latest
+            cmd: pnpm dist:win
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+        with:
+          version: 12
+          run_install: false
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build installers
+        shell: bash
+        run: ${{ matrix.cmd }}
+
+      - name: Upload installers
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: installers-${{ matrix.name }}
+          path: |
+            pack/*.dmg
+            pack/*.exe
+            pack/*.zip
+          retention-days: 30
+          if-no-files-found: error

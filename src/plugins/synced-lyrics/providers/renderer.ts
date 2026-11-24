@@ -1,9 +1,13 @@
 import { ProviderNames } from './index';
 import { LRCLib } from './LRCLib';
 import { LyricsGenius } from './LyricsGenius';
+import { NetEase } from './NetEase';
+import { QQMusic } from './QQMusic';
 import { YTMusic } from './YTMusic';
 
 export const providers = {
+  [ProviderNames.NetEase]: new NetEase(),
+  [ProviderNames.QQMusic]: new QQMusic(),
   [ProviderNames.YTMusic]: new YTMusic(),
   [ProviderNames.LRCLib]: new LRCLib(),
   [ProviderNames.LyricsGenius]: new LyricsGenius(),

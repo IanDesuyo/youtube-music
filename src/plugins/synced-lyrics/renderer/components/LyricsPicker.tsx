@@ -22,7 +22,10 @@ import {
 } from 'solid-js';
 import * as z from 'zod';
 
+import { getSongInfo } from '@/providers/song-info-front';
 import { LitElementWrapper } from '@/solit';
+
+import { LyricsInspector, LyricsInspectorIcon } from './LyricsInspector';
 
 import {
   type ProviderName,
@@ -31,6 +34,10 @@ import {
   ProviderNameSchema,
   type ProviderState,
 } from '../../providers';
+import {
+  isConfidentLyricsMatch,
+  scoreLyricsMatch,
+} from '../../providers/matching';
 import { _ytAPI } from '../index';
 import { reactiveOwner } from '../reactive-root';
 import { config } from '../renderer';
@@ -56,13 +63,22 @@ const shouldSwitchProvider = (providerData: ProviderState) => {
   );
 };
 
-const providerBias = (p: ProviderName) =>
-  (lyricsStore.lyrics[p].state === 'done' ? 1 : -1) +
-  (lyricsStore.lyrics[p].data?.lines?.length ? 2 : -1) +
-  (lyricsStore.lyrics[p].data?.lines?.length && p === ProviderNames.YTMusic
-    ? 1
-    : 0) +
-  (lyricsStore.lyrics[p].data?.lyrics ? 1 : -1);
+const providerBias = (p: ProviderName) => {
+  const provider = lyricsStore.lyrics[p];
+  const data = provider.data;
+  const song = getSongInfo();
+  const match = data && song.title ? scoreLyricsMatch(song, data) : null;
+
+  return (
+    (provider.state === 'done' ? 1 : -1) +
+    (data?.lines?.length ? 2 : -1) +
+    (data?.lines?.some((line) => line.words?.length) ? 2 : 0) +
+    (data?.lines?.some((line) => line.translation) ? 3 : 0) +
+    (data?.lines?.length && p === ProviderNames.YTMusic ? 1 : 0) +
+    (data?.lyrics ? 1 : -1) +
+    (match ? match.score * 4 + (isConfidentLyricsMatch(match) ? 2 : -8) : 0)
+  );
+};
 
 const pickBestProvider = () => {
   const preferred = config()?.preferredProvider;
@@ -88,6 +104,7 @@ export const LyricsPicker = (props: {
   const [videoId, setVideoId] = createSignal<string | null>(null);
   const [starredProvider, setStarredProvider] =
     createSignal<ProviderName | null>(null);
+  const [inspectorOpen, setInspectorOpen] = createSignal(false);
 
   createEffect(() => {
     const id = videoId();
@@ -188,6 +205,12 @@ export const LyricsPicker = (props: {
     });
   };
 
+  const selectProvider = (provider: ProviderName) => {
+    setHasManuallySwitchedProvider(true);
+    setLyricsStore('provider', provider);
+    setInspectorOpen(false);
+  };
+
   return (
     <div class="lyrics-picker" ref={props.setStickRef}>
       <div class="lyrics-picker-left">
@@ -283,7 +306,7 @@ export const LyricsPicker = (props: {
             {(_, idx) => (
               <li
                 class="lyrics-picker-dot"
-                onClick={() => setLyricsStore('provider', providerNames[idx()])}
+                onClick={() => selectProvider(providerNames[idx()])}
                 style={{
                   background: idx() === providerIdx() ? 'white' : 'black',
                 }}
@@ -293,7 +316,7 @@ export const LyricsPicker = (props: {
         </ul>
       </div>
 
-      <div class="lyrics-picker-left">
+      <div class="lyrics-picker-right">
         <mdui-button-icon>
           <LitElementWrapper
             elementClass={IconChevronRight}
@@ -304,7 +327,26 @@ export const LyricsPicker = (props: {
             }}
           />
         </mdui-button-icon>
+        <button
+          aria-label="檢視與切換歌詞來源"
+          class="lyrics-inspector-trigger"
+          onClick={() => setInspectorOpen(true)}
+          title="檢視與切換歌詞來源"
+          type="button"
+        >
+          <LyricsInspectorIcon />
+        </button>
       </div>
+
+      <LyricsInspector
+        currentProvider={lyricsStore.provider}
+        getSong={getSongInfo}
+        isOpen={inspectorOpen()}
+        lyrics={lyricsStore.lyrics}
+        onClose={() => setInspectorOpen(false)}
+        onSelect={selectProvider}
+        starredProvider={starredProvider()}
+      />
     </div>
   );
 };

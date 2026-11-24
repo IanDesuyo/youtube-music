@@ -8,7 +8,7 @@ interface LRCLine {
   timeInMs: number;
   duration: number;
   text: string;
-  words: { timeInMs: number; word: string }[];
+  words: { timeInMs: number; duration: number; text: string }[];
 }
 
 interface LRC {
@@ -21,7 +21,8 @@ const tagRegex = /^\[(?<tag>\w+):\s*(?<value>.+?)\s*\]$/;
 const timestampRegex = /^\[(?<minutes>\d+):(?<seconds>\d+)\.(?<centiseconds>\d+)\]/m;
 
 // prettier-ignore
-const wordRegex = /<(?<minutes>\d+):(?<seconds>\d+)\.(?<centiseconds>\d+)> *(?<word>\w+)/g;
+const wordRegex =
+  /<(?<minutes>\d+):(?<seconds>\d+)\.(?<centiseconds>\d+)>(?<word>[^<]*)/g;
 
 export const LRC = {
   parse: (text: string): LRC => {
@@ -42,8 +43,8 @@ export const LRC = {
         const { minutes, seconds, centiseconds } = match;
         const milliseconds = match.centiseconds.padEnd(3, '0');
         const timeInMs =
-          ((parseInt(minutes) * 60) * 1000) +
-          (parseInt(seconds) * 1000) +
+          parseInt(minutes) * 60 * 1000 +
+          parseInt(seconds) * 1000 +
           parseInt(milliseconds);
 
         timestamps.push({
@@ -75,15 +76,15 @@ export const LRC = {
         const { minutes, seconds, centiseconds, word } = groups!;
         const milliseconds = centiseconds.padEnd(3, '0');
         const timeInMs =
-          ((parseInt(minutes) * 60) * 1000) +
-          (parseInt(seconds) * 1000) +
+          parseInt(minutes) * 60 * 1000 +
+          parseInt(seconds) * 1000 +
           parseInt(milliseconds);
 
-        return { timeInMs, word };
+        return { timeInMs, duration: 0, text: word.trim() };
       });
 
       if (words.length) {
-        text = words.map(({ word }) => word).join(' ');
+        text = words.map(({ text }) => text).join(' ');
       }
 
       for (const { time, timeInMs } of timestamps) {
@@ -106,6 +107,17 @@ export const LRC = {
 
       if (next) {
         current.duration = next.timeInMs - current.timeInMs;
+      }
+
+      for (let wordIndex = 0; wordIndex < current.words.length; wordIndex++) {
+        const word = current.words[wordIndex];
+        const nextWord = current.words[wordIndex + 1];
+        word.timeInMs += offset;
+        word.duration = Math.max(
+          0,
+          (nextWord?.timeInMs ?? current.timeInMs + current.duration) -
+            word.timeInMs,
+        );
       }
     }
 

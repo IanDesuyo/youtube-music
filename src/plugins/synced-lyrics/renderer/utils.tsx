@@ -12,6 +12,7 @@ import { detect } from 'tinyld';
 
 import { waitForElement } from '@/utils/wait-for-element';
 
+import { shouldFuriganizeToken } from './furigana-context';
 import { LyricsRenderer, setIsVisible } from './renderer';
 
 export const selectors = {
@@ -183,6 +184,53 @@ export const romanizeJapanese = async (line: string) =>
     to: 'romaji',
     mode: 'spaced',
   }) ?? line;
+
+export type FuriganaSegment = { text: string; reading?: string };
+
+/** Build safe ruby segments instead of injecting Kuroshiro's generated HTML. */
+export const furiganizeJapanese = async (
+  line: string,
+  japaneseContext = line,
+): Promise<FuriganaSegment[]> => {
+  if (
+    !shouldFuriganizeToken(
+      line,
+      japaneseContext,
+      hasJapanese([japaneseContext]),
+    )
+  ) {
+    return [{ text: line }];
+  }
+
+  const html = await (
+    await kuroshiro.get()
+  ).convert(line, {
+    to: 'hiragana',
+    mode: 'furigana',
+  });
+  if (!html) return [{ text: line }];
+
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  const segments: FuriganaSegment[] = [];
+  for (const node of document.body.childNodes) {
+    if (node instanceof HTMLElement && node.tagName === 'RUBY') {
+      const reading = node.querySelector('rt')?.textContent?.trim();
+      const text = Array.from(node.childNodes)
+        .filter(
+          (child) =>
+            !(child instanceof HTMLElement) ||
+            (child.tagName !== 'RT' && child.tagName !== 'RP'),
+        )
+        .map((child) => child.textContent ?? '')
+        .join('');
+      if (text) segments.push({ text, reading: reading || undefined });
+    } else if (node.textContent) {
+      segments.push({ text: node.textContent });
+    }
+  }
+
+  return segments.length ? segments : [{ text: line }];
+};
 
 export const romanizeHangul = (line: string) =>
   esHangulRomanize(hanja.translate(line, 'SUBSTITUTION'));

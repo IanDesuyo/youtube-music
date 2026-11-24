@@ -105,36 +105,44 @@ test('karaoke', () => {
         timeInMs: 0,
         words: [
           {
+            duration: 120,
             timeInMs: 40,
-            word: 'When',
+            text: 'When',
           },
           {
+            duration: 660,
             timeInMs: 160,
-            word: 'the',
+            text: 'the',
           },
           {
+            duration: 470,
             timeInMs: 820,
-            word: 'truth',
+            text: 'truth',
           },
           {
+            duration: 340,
             timeInMs: 1290,
-            word: 'is',
+            text: 'is',
           },
           {
+            duration: 1460,
             timeInMs: 1630,
-            word: 'found',
+            text: 'found',
           },
           {
+            duration: 280,
             timeInMs: 3090,
-            word: 'to',
+            text: 'to',
           },
           {
+            duration: 2550,
             timeInMs: 3370,
-            word: 'be',
+            text: 'be',
           },
           {
+            duration: Infinity,
             timeInMs: 5920,
-            word: 'lies',
+            text: 'lies',
           },
         ],
       },

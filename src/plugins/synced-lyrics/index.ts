@@ -3,6 +3,7 @@ import { createPlugin } from '@/utils';
 
 import { backend } from './backend';
 import { menu } from './menu';
+import { ProviderNames } from './providers';
 import { renderer } from './renderer';
 import style from './style.css?inline';
 
@@ -20,7 +21,8 @@ export default createPlugin<
   restartNeeded: true,
   addedVersion: '3.5.X',
   config: {
-    enabled: false,
+    enabled: true,
+    preferredProvider: ProviderNames.NetEase,
     preciseTiming: true,
     showLyricsEvenIfInexact: true,
     showTimeCodes: false,

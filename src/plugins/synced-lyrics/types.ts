@@ -18,12 +18,20 @@ export type SyncedLyricsPluginConfig = {
 
 export type LineLyricsStatus = 'previous' | 'current' | 'upcoming';
 
+export type TimedLyricWord = {
+  text: string;
+  timeInMs: number;
+  duration: number;
+};
+
 export type LineLyrics = {
   time: string;
   timeInMs: number;
   duration: number;
 
   text: string;
+  translation?: string;
+  words?: TimedLyricWord[];
   status: LineLyricsStatus;
 };
 

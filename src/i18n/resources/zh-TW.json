@@ -899,8 +899,8 @@
           "tooltip": "選擇預設的歌詞提供者"
         },
         "romanization": {
-          "label": "羅馬拼音化歌詞",
-          "tooltip": "如果歌詞使用不同語言，嘗試使用拉丁文顯示。"
+          "label": "顯示日文振假名",
+          "tooltip": "像日文 KTV 一樣，在漢字上方顯示平假名讀音。"
         },
         "show-lyrics-even-if-inexact": {
           "label": "即使不精確依然強制顯示歌詞",

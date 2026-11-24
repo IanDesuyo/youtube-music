@@ -1,3 +1,6 @@
+import { fetchProvider } from './http';
+import { isConfidentLyricsMatch, scoreLyricsMatch } from './matching';
+
 import type { LyricProvider, LyricResult, SearchSongInfo } from '../types';
 
 const preloadedStateRegex = /__PRELOADED_STATE__ = JSON\.parse\('(.*?)'\);/;
@@ -9,14 +12,17 @@ export class LyricsGenius implements LyricProvider {
   private domParser = new DOMParser();
 
   // prettier-ignore
-  async search({ title, artist }: SearchSongInfo): Promise<LyricResult | null> {
+  async search(info: SearchSongInfo): Promise<LyricResult | null> {
+    const { title, artist } = info;
     const query = new URLSearchParams({
       q: `${artist} ${title}`,
       page: '1',
       per_page: '10',
     });
 
-    const response = await fetch(`${this.baseUrl}/api/search/song?${query}`);
+    const response = await fetchProvider(
+      `${this.baseUrl}/api/search/song?${query}`,
+    );
     if (!response.ok) {
       return null;
     }
@@ -24,35 +30,25 @@ export class LyricsGenius implements LyricProvider {
     const data = (await response.json()) as LyricsGeniusSearch;
     const hits = data.response.sections[0].hits;
 
-    hits.sort(
-      ({
-        result: {
-          title: titleA,
-          primary_artist: { name: artistA },
-        },
-      }, {
-        result: {
-          title: titleB,
-          primary_artist: { name: artistB },
-        },
-      }) => {
-        const pointsA = (titleA === title ? 1 : 0) +
-          (artistA.includes(artist) ? 1 : 0);
-        const pointsB = (titleB === title ? 1 : 0) +
-          (artistB.includes(artist) ? 1 : 0);
+    const rankedHits = hits
+      .map((hit) => ({
+        hit,
+        match: scoreLyricsMatch(info, {
+          title: hit.result.title,
+          artists: hit.result.primary_artists.map(({ name }) => name),
+        }),
+      }))
+      .filter(({ match }) => isConfidentLyricsMatch(match))
+      .sort((a, b) => b.match.score - a.match.score);
 
-        return pointsB - pointsA;
-      },
-    );
-
-    const closestHit = hits.at(0);
+    const closestHit = rankedHits.at(0)?.hit;
     if (!closestHit || closestHit.result.primary_artist.url === 'https://genius.com/artists/Deleted-artist') {
       return null;
     }
 
     const { result: { path } } = closestHit;
 
-    const html = await fetch(`${this.baseUrl}${path}`).then((res) =>
+    const html = await fetchProvider(`${this.baseUrl}${path}`).then((res) =>
       res.text(),
     );
     const doc = this.domParser.parseFromString(html, 'text/html');

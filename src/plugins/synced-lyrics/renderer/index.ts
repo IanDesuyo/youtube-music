@@ -16,6 +16,7 @@ export let netFetch: (
   url: string,
   init?: RequestInit,
 ) => Promise<[number, string, Record<string, string>]>;
+export let netEaseLyricsFetch: (songId: number) => Promise<[number, string]>;
 
 export const renderer = createRenderer<
   {
@@ -77,6 +78,10 @@ export const renderer = createRenderer<
 
   async start(ctx: RendererContext<SyncedLyricsPluginConfig>) {
     netFetch = ctx.ipc.invoke.bind(ctx.ipc, 'synced-lyrics:fetch');
+    netEaseLyricsFetch = ctx.ipc.invoke.bind(
+      ctx.ipc,
+      'synced-lyrics:netease-lyrics',
+    );
 
     setConfig(await ctx.getConfig());
 

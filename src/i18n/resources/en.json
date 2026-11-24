@@ -881,8 +881,8 @@
           "tooltip": "Calculate to the milisecond the display of the next line (can have a small impact on performance)"
         },
         "romanization": {
-          "label": "Romanize lyrics",
-          "tooltip": "If the lyrics are in a different language, try to display a latin version."
+          "label": "Show Japanese furigana",
+          "tooltip": "Show hiragana readings above Japanese kanji, karaoke-style."
         },
         "show-lyrics-even-if-inexact": {
           "label": "Show lyrics even if inexact",

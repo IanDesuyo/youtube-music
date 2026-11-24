@@ -17,8 +17,10 @@ import {
   PlainLyrics,
 } from './components';
 import { LyricsPicker } from './components/LyricsPicker';
+import { getLyricsScrollTarget } from './lyrics-scroll';
 import { reactiveOwner } from './reactive-root';
 import { currentLyrics } from './store';
+import { getEffectiveLyricsTime, lyricsTimingOffset } from './timing-offset';
 import { selectors } from './utils';
 
 import type { LineLyrics, SyncedLyricsPluginConfig } from '../types';
@@ -148,6 +150,12 @@ export const LyricsRenderer = () => {
   const [scroller, setScroller] = createSignal<VirtualizerHandle>();
   const [stickyRef, setStickRef] = createSignal<HTMLElement | null>(null);
 
+  const scrollToTop = () => {
+    setCurrentIndex(0);
+    stickyRef()?.style.setProperty('--lyrics-picker-top', '0');
+    scroller()?.scrollToIndex(0, { smooth: false, align: 'start' });
+  };
+
   const tab = document.querySelector<HTMLElement>(selectors.body.tabRenderer)!;
 
   let mouseCoord = 0;
@@ -233,7 +241,7 @@ export const LyricsRenderer = () => {
     ('previous' | 'current' | 'upcoming')[]
   >([]);
   createEffect(() => {
-    const time = currentTime();
+    const time = getEffectiveLyricsTime(currentTime(), lyricsTimingOffset());
     const data = currentLyrics()?.data;
 
     if (!data || !data.lines) return setStatuses([]);
@@ -253,8 +261,20 @@ export const LyricsRenderer = () => {
   });
 
   const [currentIndex, setCurrentIndex] = createSignal(0);
+
+  // A new song first replaces every provider with a fetching state. Reset at
+  // that boundary so virtua cannot retain the previous data set's offset. The
+  // same rule also covers plain lyrics and error/empty states.
   createEffect(() => {
-    const index = statuses().findIndex((status) => status === 'current');
+    const current = currentLyrics();
+    const handle = scroller();
+    if (!handle || current.data?.lines) return;
+    scrollToTop();
+  });
+
+  createEffect(() => {
+    const currentStatuses = statuses();
+    const index = currentStatuses.findIndex((status) => status === 'current');
     if (index === -1) return;
     setCurrentIndex(index);
   });
@@ -262,16 +282,19 @@ export const LyricsRenderer = () => {
   createEffect(() => {
     const current = currentLyrics();
     const idx = currentIndex();
-    const maxIdx = untrack(statuses).length - 1;
+    const currentStatuses = statuses();
 
     if (!scroller() || !current.data?.lines) return;
 
-    // hacky way to make the "current" line scroll to the center of the screen
-    const scrollIndex = Math.min(idx + 1, maxIdx);
+    const target = getLyricsScrollTarget(currentStatuses, idx);
+    if (target.align === 'start') {
+      scrollToTop();
+      return;
+    }
 
-    scroller()!.scrollToIndex(scrollIndex, {
-      smooth: true,
-      align: 'center',
+    scroller()!.scrollToIndex(target.index, {
+      smooth: target.smooth,
+      align: target.align,
     });
   });
 

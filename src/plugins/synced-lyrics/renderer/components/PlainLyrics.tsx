@@ -1,19 +1,15 @@
-import { createEffect, createMemo, createSignal, Show } from 'solid-js';
+import { createMemo } from 'solid-js';
+
+import { FuriganaText } from './FuriganaText';
 
 import { config } from '../renderer';
-import {
-  canonicalize,
-  convertChineseCharacter,
-  romanize,
-  simplifyUnicode,
-} from '../utils';
+import { convertChineseCharacter } from '../utils';
 
 interface PlainLyricsProps {
   line: string;
 }
 
 export const PlainLyrics = (props: PlainLyricsProps) => {
-  const [romanization, setRomanization] = createSignal('');
   const text = createMemo(() => {
     let line = props.line;
     const convertChineseText = config()?.convertChineseCharacter;
@@ -21,15 +17,6 @@ export const PlainLyrics = (props: PlainLyricsProps) => {
       line = convertChineseCharacter(line, convertChineseText);
     }
     return line;
-  });
-
-  createEffect(() => {
-    if (!config()?.romanization) return;
-
-    const input = canonicalize(text());
-    romanize(input).then((result) => {
-      setRomanization(canonicalize(result));
-    });
   });
 
   return (
@@ -42,24 +29,9 @@ export const PlainLyrics = (props: PlainLyricsProps) => {
         'flex-direction': 'column',
       }}
     >
-      <yt-formatted-string
-        text={{
-          runs: [{ text: text() }],
-        }}
-      />
-      <Show
-        when={
-          config()?.romanization &&
-          simplifyUnicode(text()) !== simplifyUnicode(romanization())
-        }
-      >
-        <yt-formatted-string
-          class="romaji"
-          text={{
-            runs: [{ text: romanization() }],
-          }}
-        />
-      </Show>
+      <span class="lyric-primary">
+        <FuriganaText text={text()} />
+      </span>
     </div>
   );
 };
